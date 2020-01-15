@@ -1,6 +1,6 @@
-module github.com/minio/xl-meta
+module github.com/harshavardhana/xl-meta-bench
 
-go 1.12
+go 1.13
 
 require (
 	github.com/go-stack/stack v1.8.0 // indirect
