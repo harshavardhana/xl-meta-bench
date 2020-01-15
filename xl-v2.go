@@ -2,6 +2,18 @@ package main
 
 import "time"
 
+type ErasureAlgo int
+
+const (
+	ReedSolomon ErasureAlgo = iota
+)
+
+type ChecksumAlgo int
+
+const (
+	HighwayHash256S ChecksumAlgo = iota
+)
+
 type XLMetaV2DeleteMarker struct {
 	VersionID string    `json:"id"`
 	ModTime   time.Time `json:"modTime"`
@@ -12,14 +24,14 @@ type XLMetaV2Object struct {
 	Data      struct {
 		Dir     string `json:"dir"`
 		Erasure struct {
-			Algorithm    string `json:"algorithm"`
-			Data         int    `json:"data"`
-			Parity       int    `json:"parity"`
-			BlockSize    int    `json:"blockSize"`
-			Index        int    `json:"index"`
-			Distribution []int  `json:"distribution"`
+			Algorithm    ErasureAlgo `json:"algorithm"`
+			Data         int         `json:"data"`
+			Parity       int         `json:"parity"`
+			BlockSize    int         `json:"blockSize"`
+			Index        int         `json:"index"`
+			Distribution []int       `json:"distribution"`
 			Checksum     struct {
-				Algorithm string `json:"algorithm"`
+				Algorithm ChecksumAlgo `json:"algorithm"`
 			} `json:"checksum"`
 		} `json:"erasure"`
 		Parts []struct {
@@ -28,8 +40,8 @@ type XLMetaV2Object struct {
 		} `json:"parts"`
 	} `json:"data"`
 	Stat struct {
-		Size    int       `json:"size"`
-		ModTime time.Time `json:"modTime"`
+		Size    int   `json:"size"`
+		ModTime int64 `json:"modTime"`
 	} `json:"stat"`
 	Meta struct {
 		Sys  map[string]string `json:"sys"`
@@ -58,12 +70,12 @@ func newXLMetaV2Object(nparts int) XLMetaV2Object {
 	obj := XLMetaV2Object{}
 	obj.VersionID = "00000000-0000-0000-0000-000000000000"
 	obj.Data.Dir = "9dd7d884-121a-41e9-9a4e-d64e608d1b51"
-	obj.Data.Erasure.Algorithm = "klauspost/reedsolomon/vandermonde"
+	obj.Data.Erasure.Algorithm = ReedSolomon
 	obj.Data.Erasure.Data = 8
 	obj.Data.Erasure.Parity = 8
 	obj.Data.Erasure.BlockSize = 10485760
 	obj.Data.Erasure.Index = 1
-	obj.Data.Erasure.Checksum.Algorithm = "highwayhash256S"
+	obj.Data.Erasure.Checksum.Algorithm = HighwayHash256S
 	obj.Data.Erasure.Distribution = []int{
 		1,
 		2,
@@ -93,7 +105,7 @@ func newXLMetaV2Object(nparts int) XLMetaV2Object {
 		})
 	}
 	obj.Stat.Size = 52428800000
-	obj.Stat.ModTime = time.Now()
+	obj.Stat.ModTime = time.Now().Unix()
 	obj.Meta.Sys = map[string]string{
 		"minio-release": "DEVELOPMENT.GOGET",
 		"etag":          "dc7cbd0700092050951b9063b94eb68a",
