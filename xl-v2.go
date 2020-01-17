@@ -2,6 +2,8 @@ package main
 
 import "time"
 
+//go:generate msgp -file=$GOFILE -tests=false
+
 type ErasureAlgo int
 
 const (
