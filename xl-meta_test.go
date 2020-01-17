@@ -11,11 +11,14 @@ import (
 	"github.com/vmihailenco/msgpack/v4"
 )
 
-func benchmarkParseUnmarshalN(b *testing.B, XLMetaBuf []byte, parser string) {
-	b.SetBytes(int64(len(XLMetaBuf)))
+func benchmarkParseUnmarshalN(b *testing.B, XLMetaBuf []byte, parser string, elems int) {
+	b.SetBytes(int64(elems))
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.SetParallelism(runtime.NumCPU())
+	if testing.Verbose() {
+		b.Log(parser, "Size:", len(XLMetaBuf))
+	}
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			var unMarshalXLMeta XLMetaV2
@@ -71,7 +74,7 @@ func BenchmarkParseUnmarshalGob(b *testing.B) {
 			}
 			test := fmt.Sprintf("%s-%dx%d", "gob", m, n)
 			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, buf.Bytes(), "gob")
+				benchmarkParseUnmarshalN(b, buf.Bytes(), "gob", n*m)
 			})
 		}
 	}
@@ -98,7 +101,7 @@ func BenchmarkParseUnmarshalJsoniterFast(b *testing.B) {
 			}
 			test := fmt.Sprintf("%s-%dx%d", "jsoniter-fast", m, n)
 			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, XLMetaBuf, "jsoniter-fast")
+				benchmarkParseUnmarshalN(b, XLMetaBuf, "jsoniter-fast", n*m)
 			})
 		}
 	}
@@ -125,7 +128,7 @@ func BenchmarkParseUnmarshalJsoniterCompat(b *testing.B) {
 			}
 			test := fmt.Sprintf("%s-%dx%d", "jsoniter-compat", m, n)
 			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, XLMetaBuf, "jsoniter-compat")
+				benchmarkParseUnmarshalN(b, XLMetaBuf, "jsoniter-compat", n*m)
 			})
 		}
 	}
@@ -153,7 +156,7 @@ func BenchmarkParseUnmarshalTinylibMsg(b *testing.B) {
 
 			test := fmt.Sprintf("%s-%dx%d", "msgpack-fast", m, n)
 			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, XLMetaBuf, "msgpack-fast")
+				benchmarkParseUnmarshalN(b, XLMetaBuf, "msgpack-fast", n*m)
 			})
 		}
 	}
@@ -180,7 +183,7 @@ func BenchmarkParseUnmarshalMsgpack(b *testing.B) {
 
 			test := fmt.Sprintf("%s-%dx%d", "msgpack", m, n)
 			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, XLMetaBuf, "msgpack")
+				benchmarkParseUnmarshalN(b, XLMetaBuf, "msgpack", n*m)
 			})
 		}
 	}
