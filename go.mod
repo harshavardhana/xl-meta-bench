@@ -8,4 +8,5 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/tinylib/msgp v1.1.1
 	github.com/vmihailenco/msgpack/v4 v4.3.5
+	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
 )
