@@ -38,14 +38,6 @@ const (
 	HighwayHash256S ChecksumAlgo = iota
 )
 
-type MacAlgo uint8
-
-const (
-	MacAlgoNone MacAlgo = iota
-	MacAlgoHMACSHA256
-	MacAlgoSHAKE256
-)
-
 type ObjectMetaV2DeleteMarker struct {
 	VersionID uint64 `json:"id" msg:"id"`
 	ModTime   int64  `json:"mtime" msg:"mtime"`
@@ -56,24 +48,21 @@ type ObjectMetaV2DeleteMarker struct {
 type DeltaEncodedInt []int
 
 type ObjectMetaV2Object struct {
-	VersionID               uint64            `json:"id" msg:"id"`
-	DataDir                 uint64            `json:"dataDir" msg:"dd"`
-	DataErasureAlgorithm    ErasureAlgo       `json:"ealgo" msg:"ealgo"`
-	DataErasureM            int               `json:"m" msg:"m"`
-	DataErasureN            int               `json:"n" msg:"n"`
-	DataErasureBlockSize    int               `json:"bsize" msg:"bsize"`
-	DataErasureIndex        int               `json:"index" msg:"index"`
-	DataErasureDistribution []uint8           `json:"dist" msg:"dist"`
-	DataErasureChecksumAlgo ChecksumAlgo      `json:"calgo" msg:"clago"`
-	DataPartInfoNumbers     DeltaEncodedInt   `json:"pnumbers" msg:"pnum"`
-	DataPartInfoSizes       DeltaEncodedInt   `json:"psizes" msg:"psz"`
-	MacAlgo                 MacAlgo           `json:"malgo,omitempty" msg:"malgo,omitempty"`
-	Mac                     []byte            `json:"mac" msg:"mac"`
-	StatSize                int               `json:"size" msg:"size"`
-	StatModTime             int64             `json:"mtime" msg:"mtime"`
-	MetaSys                 map[string]string `json:"msys" msg:"msys,omitempty"`
-	MetaSysBin              map[string][]byte `json:"mbin,omitempty" msg:"mbin,omitempty"`
-	MetaUser                map[string]string `json:"muser" msg:"muser,omitempty"`
+	VersionID               uint64              `json:"id" msg:"id"`
+	DataDir                 uint64              `json:"dd" msg:"dd"`
+	DataErasureAlgorithm    ErasureAlgo         `json:"ealgo" msg:"ealgo"`
+	DataErasureM            int                 `json:"m" msg:"m"`
+	DataErasureN            int                 `json:"n" msg:"n"`
+	DataErasureBlockSize    int                 `json:"bsize" msg:"bsize"`
+	DataErasureIndex        int                 `json:"index" msg:"index"`
+	DataErasureDistribution []uint8             `json:"dist" msg:"dist"`
+	DataErasureChecksumAlgo ChecksumAlgo        `json:"calgo" msg:"clago"`
+	DataPartInfoNumbers     DeltaEncodedInt     `json:"pnum" msg:"pnum"`
+	DataPartInfoSizes       DeltaEncodedInt     `json:"psz" msg:"psz"`
+	StatSize                int                 `json:"size" msg:"size"`
+	StatModTime             int64               `json:"mtime" msg:"mtime"`
+	MetaSys                 map[string][]byte   `json:"msys" msg:"msys,omitempty"`
+	MetaUser                map[string][]string `json:"muser" msg:"muser,omitempty"`
 }
 
 type ObjectMetaV2Link ObjectMetaV2Object
@@ -86,9 +75,9 @@ type ObjectMetaV2JournalEntry struct {
 }
 
 type ObjectMetaV2 struct {
-	Version        int64                      `json:"version" msg:"v"`  // Version of the current `object.json`.
-	Format         Format                     `json:"format" msg:"fmt"` // Format of the current `object.json`.
-	ObjectJournals []ObjectMetaV2JournalEntry `json:"journals" msg:"journals"`
+	Version        int64                      `json:"v" msg:"v"`     // Version of the current `object.json`.
+	Format         Format                     `json:"fmt" msg:"fmt"` // Format of the current `object.json`.
+	ObjectJournals []ObjectMetaV2JournalEntry `json:"ojs" msg:"ojs"`
 }
 
 func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
@@ -125,9 +114,6 @@ func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
 	}
 	obj.DataPartInfoSizes = make([]int, nparts)
 	obj.DataPartInfoNumbers = make([]int, nparts)
-	obj.MacAlgo = MacAlgoHMACSHA256
-	obj.Mac = make([]byte, 32)
-	rand.Read(obj.Mac)
 
 	for j := 0; j < nparts; j++ {
 		obj.DataPartInfoNumbers[j] = j + 1
@@ -135,17 +121,15 @@ func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
 	}
 	obj.StatSize = 52428800000
 	obj.StatModTime = time.Now().Unix()
-	obj.MetaSys = map[string]string{
-		"minio-release": "DEVELOPMENT.GOGET",
+	obj.MetaUser = map[string][]string{
+		"content-type": []string{"application/octet-stream"},
+		"etag":         []string{"dc7cbd0700092050951b9063b94eb68a"},
 	}
-	obj.MetaUser = map[string]string{
-		"content-type": "application/octet-stream",
-		"etag":         "dc7cbd0700092050951b9063b94eb68a",
-	}
-	myMac := make([]byte, 32)
-	rand.Read(myMac)
-	obj.MetaSysBin = map[string][]byte{
-		"HMAC-SHA256": myMac,
+	buf := make([]byte, 32)
+	rand.Read(buf)
+	obj.MetaSys = map[string][]byte{
+		"minio-release": []byte("DEVELOPMENT.GOGET"),
+		"mac":           []byte("hmac-sha256: xxxxxxxxxxxxxxxxxxxxxxx"),
 	}
 	return obj
 }
