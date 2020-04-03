@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
-	"encoding/gob"
 	"fmt"
 	"runtime"
 	"testing"
 
 	"github.com/dustin/go-humanize"
 	jsoniter "github.com/json-iterator/go"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func benchmarkParseUnmarshalN(b *testing.B, ObjectMetaBuf []byte, parser string, elems int) {
@@ -25,13 +22,6 @@ func benchmarkParseUnmarshalN(b *testing.B, ObjectMetaBuf []byte, parser string,
 		for pb.Next() {
 			var unMarshalObjectMeta ObjectMetaV2
 			switch parser {
-			case "bson":
-				if err := bson.Unmarshal(ObjectMetaBuf, &unMarshalObjectMeta); err != nil {
-					b.Fatal(err)
-				}
-				if unMarshalObjectMeta.ObjectJournals[0].Object.DataErasureM != 8 {
-					b.Fatal("unexpected")
-				}
 			case "jsoniter-fast":
 				var json = jsoniter.ConfigFastest
 				if err := json.Unmarshal(ObjectMetaBuf, &unMarshalObjectMeta); err != nil {
@@ -43,14 +33,6 @@ func benchmarkParseUnmarshalN(b *testing.B, ObjectMetaBuf []byte, parser string,
 			case "jsoniter-compat":
 				var json = jsoniter.ConfigCompatibleWithStandardLibrary
 				if err := json.Unmarshal(ObjectMetaBuf, &unMarshalObjectMeta); err != nil {
-					b.Fatal(err)
-				}
-				if unMarshalObjectMeta.ObjectJournals[0].Object.DataErasureM != 8 {
-					b.Fatal("unexpected")
-				}
-			case "gob":
-				dec := gob.NewDecoder(bytes.NewReader(ObjectMetaBuf))
-				if err := dec.Decode(&unMarshalObjectMeta); err != nil {
 					b.Fatal(err)
 				}
 				if unMarshalObjectMeta.ObjectJournals[0].Object.DataErasureM != 8 {
@@ -96,37 +78,6 @@ var (
 		10000,
 	}
 )
-
-func BenchmarkParseUnmarshalGob(b *testing.B) {
-	for _, m := range ms {
-		for _, n := range ns {
-			var buf bytes.Buffer
-			enc := gob.NewEncoder(&buf)
-			if err := enc.Encode(getSampleObjectMetaV2(m, n)); err != nil {
-				b.Fatal(err)
-			}
-			test := fmt.Sprintf("%s-%dx%d", "gob", m, n)
-			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, buf.Bytes(), "gob", n*m)
-			})
-		}
-	}
-}
-
-func BenchmarkParseUnmarshalBson(b *testing.B) {
-	for _, m := range ms {
-		for _, n := range ns {
-			ObjectMetaBuf, err := bson.Marshal(getSampleObjectMetaV2(m, n))
-			if err != nil {
-				b.Fatal(err)
-			}
-			test := fmt.Sprintf("%s-%dx%d", "bson", m, n)
-			b.Run(test, func(b *testing.B) {
-				benchmarkParseUnmarshalN(b, ObjectMetaBuf, "bson", n*m)
-			})
-		}
-	}
-}
 
 func BenchmarkParseUnmarshalJsoniterFast(b *testing.B) {
 	var json = jsoniter.ConfigFastest
