@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 //go:generate msgp -file=$GOFILE -tests=false
@@ -35,41 +37,45 @@ const (
 )
 
 type ObjectMetaV2DeleteMarker struct {
-	VersionID uint64 `json:"id"`
-	ModTime   int64  `json:"mtime"`
+	VersionID uint64 `json:"id" msg:"id"`
+	ModTime   int64  `json:"mtime" msg:"mtime"`
 }
 
+// DeltaEncodedInt is an integer array that will be serialized as delta-encoded values.
+//msgp:ignore DeltaEncodedInt
+type DeltaEncodedInt []int
+
 type ObjectMetaV2Object struct {
-	VersionID               uint64            `json:"id"`
-	DataDir                 uint64            `json:"dataDir"`
-	DataErasureAlgorithm    ErasureAlgo       `json:"ealgo"`
-	DataErasureM            int               `json:"m"`
-	DataErasureN            int               `json:"n"`
-	DataErasureBlockSize    int               `json:"bsize"`
-	DataErasureIndex        int               `json:"index"`
-	DataErasureDistribution []int             `json:"dist"`
-	DataErasureChecksumAlgo ChecksumAlgo      `json:"calgo"`
-	DataPartInfoNumbers     []int             `json:"pnumbers"`
-	DataPartInfoSizes       []int             `json:"psizes"`
-	StatSize                int               `json:"size"`
-	StatModTime             int64             `json:"mtime"`
-	MetaSys                 map[string]string `json:"msys"`
-	MetaUser                map[string]string `json:"muser"`
+	VersionID               uint64            `json:"id" msg:"id"`
+	DataDir                 uint64            `json:"dataDir" msg:"dd"`
+	DataErasureAlgorithm    ErasureAlgo       `json:"ealgo" msg:"ealgo"`
+	DataErasureM            int               `json:"m" msg:"m"`
+	DataErasureN            int               `json:"n" msg:"n"`
+	DataErasureBlockSize    int               `json:"bsize" msg:"bsize"`
+	DataErasureIndex        int               `json:"index" msg:"index"`
+	DataErasureDistribution []int             `json:"dist" msg:"dist"`
+	DataErasureChecksumAlgo ChecksumAlgo      `json:"calgo" msg:"clago"`
+	DataPartInfoNumbers     DeltaEncodedInt   `json:"pnumbers" msg:"pnum"`
+	DataPartInfoSizes       DeltaEncodedInt   `json:"psizes" msg:"psz"`
+	StatSize                int               `json:"size" msg:"size"`
+	StatModTime             int64             `json:"mtime" msg:"mtime"`
+	MetaSys                 map[string]string `json:"msys" msg:"msys,omitempty"`
+	MetaUser                map[string]string `json:"muser" msg:"muser,omitempty"`
 }
 
 type ObjectMetaV2Link ObjectMetaV2Object
 
 type ObjectMetaV2JournalEntry struct {
-	Type         JournalType               `json:"type"`
-	DeleteMarker *ObjectMetaV2DeleteMarker `json:"delete,omitempty"`
-	Object       *ObjectMetaV2Object       `json:"object,omitempty"`
-	Link         *ObjectMetaV2Link         `json:"link,omitempty"`
+	Type         JournalType               `json:"type" msg:"type"`
+	DeleteMarker *ObjectMetaV2DeleteMarker `json:"delete,omitempty" msg:"delete,omitempty"`
+	Object       *ObjectMetaV2Object       `json:"object,omitempty" msg:"object,omitempty"`
+	Link         *ObjectMetaV2Link         `json:"link,omitempty" msg:"link,omitempty"`
 }
 
 type ObjectMetaV2 struct {
-	Version        int64                      `json:"version"` // Version of the current `object.json`.
-	Format         Format                     `json:"format"`  // Format of the current `object.json`.
-	ObjectJournals []ObjectMetaV2JournalEntry `json:"journals"`
+	Version        int64                      `json:"version" msg:"v"`  // Version of the current `object.json`.
+	Format         Format                     `json:"format" msg:"fmt"` // Format of the current `object.json`.
+	ObjectJournals []ObjectMetaV2JournalEntry `json:"journals" msg:"journals"`
 }
 
 func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
@@ -143,4 +149,97 @@ func newObjectMetaV2(nparts int, nversions int) ObjectMetaV2 {
 
 func getSampleObjectMetaV2(nparts int, nversions int) ObjectMetaV2 {
 	return newObjectMetaV2(nparts, nversions)
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *DeltaEncodedInt) DecodeMsg(dc *msgp.Reader) (err error) {
+	var zb0002 uint32
+	zb0002, err = dc.ReadArrayHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	if cap((*z)) >= int(zb0002) {
+		(*z) = (*z)[:zb0002]
+	} else {
+		(*z) = make(DeltaEncodedInt, zb0002)
+	}
+	var c int
+	for zb0001 := range *z {
+		var v int
+		v, err = dc.ReadInt()
+		c += v
+		(*z)[zb0001] = c
+		if err != nil {
+			err = msgp.WrapError(err, zb0001)
+			return
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z DeltaEncodedInt) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteArrayHeader(uint32(len(z)))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var c int
+	for zb0003 := range z {
+		v := z[zb0003]
+		err = en.WriteInt(v - c)
+		if err != nil {
+			err = msgp.WrapError(err, zb0003)
+			return
+		}
+		c = v
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z DeltaEncodedInt) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendArrayHeader(o, uint32(len(z)))
+	var c int
+	for zb0003 := range z {
+		v := z[zb0003]
+		o = msgp.AppendInt(o, v-c)
+		c = v
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DeltaEncodedInt) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var zb0002 uint32
+	zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	if cap((*z)) >= int(zb0002) {
+		(*z) = (*z)[:zb0002]
+	} else {
+		(*z) = make(DeltaEncodedInt, zb0002)
+	}
+	var c int
+	for zb0001 := range *z {
+		var v int
+		v, bts, err = msgp.ReadIntBytes(bts)
+		(*z)[zb0001] = c + v
+		if err != nil {
+			err = msgp.WrapError(err, zb0001)
+			return
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z DeltaEncodedInt) Msgsize() (s int) {
+	s = msgp.ArrayHeaderSize + (len(z) * (msgp.IntSize))
+	return
 }
