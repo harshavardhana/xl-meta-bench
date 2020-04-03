@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/big"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ type ObjectMetaV2Object struct {
 	StatSize                int               `json:"size" msg:"size"`
 	StatModTime             int64             `json:"mtime" msg:"mtime"`
 	MetaSys                 map[string]string `json:"msys" msg:"msys,omitempty"`
+	MetaSysBin              map[string][]byte `json:"mbin,omitempty" msg:"mbin,omitempty"`
 	MetaUser                map[string]string `json:"muser" msg:"muser,omitempty"`
 }
 
@@ -124,6 +126,11 @@ func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
 	obj.MetaUser = map[string]string{
 		"content-type": "application/octet-stream",
 		"etag":         "dc7cbd0700092050951b9063b94eb68a",
+	}
+	myMac := make([]byte, 32)
+	rand.Read(myMac)
+	obj.MetaSysBin = map[string][]byte{
+		"HMAC-SHA256": myMac,
 	}
 	return obj
 }
