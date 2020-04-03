@@ -12,13 +12,13 @@ import (
 
 //go:generate msgp -file=$GOFILE -tests=false
 
-type Format int
+type Format uint8
 
 const (
 	XL Format = iota
 )
 
-type JournalType int
+type JournalType uint8
 
 const (
 	Object JournalType = 0
@@ -26,16 +26,24 @@ const (
 	Link   JournalType = 2
 )
 
-type ErasureAlgo int
+type ErasureAlgo uint8
 
 const (
 	ReedSolomon ErasureAlgo = iota
 )
 
-type ChecksumAlgo int
+type ChecksumAlgo uint8
 
 const (
 	HighwayHash256S ChecksumAlgo = iota
+)
+
+type MacAlgo uint8
+
+const (
+	MacAlgoNone MacAlgo = iota
+	MacAlgoHMACSHA256
+	MacAlgoSHAKE256
 )
 
 type ObjectMetaV2DeleteMarker struct {
@@ -55,10 +63,12 @@ type ObjectMetaV2Object struct {
 	DataErasureN            int               `json:"n" msg:"n"`
 	DataErasureBlockSize    int               `json:"bsize" msg:"bsize"`
 	DataErasureIndex        int               `json:"index" msg:"index"`
-	DataErasureDistribution []int             `json:"dist" msg:"dist"`
+	DataErasureDistribution []uint8           `json:"dist" msg:"dist"`
 	DataErasureChecksumAlgo ChecksumAlgo      `json:"calgo" msg:"clago"`
 	DataPartInfoNumbers     DeltaEncodedInt   `json:"pnumbers" msg:"pnum"`
 	DataPartInfoSizes       DeltaEncodedInt   `json:"psizes" msg:"psz"`
+	MacAlgo                 MacAlgo           `json:"malgo,omitempty" msg:"malgo,omitempty"`
+	Mac                     []byte            `json:"mac" msg:"mac"`
 	StatSize                int               `json:"size" msg:"size"`
 	StatModTime             int64             `json:"mtime" msg:"mtime"`
 	MetaSys                 map[string]string `json:"msys" msg:"msys,omitempty"`
@@ -95,7 +105,7 @@ func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
 	obj.DataErasureBlockSize = 10485760
 	obj.DataErasureIndex = 1
 	obj.DataErasureChecksumAlgo = HighwayHash256S
-	obj.DataErasureDistribution = []int{
+	obj.DataErasureDistribution = []uint8{
 		1,
 		2,
 		3,
@@ -115,6 +125,10 @@ func newObjectMetaV2Object(nparts int) *ObjectMetaV2Object {
 	}
 	obj.DataPartInfoSizes = make([]int, nparts)
 	obj.DataPartInfoNumbers = make([]int, nparts)
+	obj.MacAlgo = MacAlgoHMACSHA256
+	obj.Mac = make([]byte, 32)
+	rand.Read(obj.Mac)
+
 	for j := 0; j < nparts; j++ {
 		obj.DataPartInfoNumbers[j] = j + 1
 		obj.DataPartInfoSizes[j] = 5242880
