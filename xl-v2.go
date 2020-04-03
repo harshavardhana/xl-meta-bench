@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 	"time"
@@ -149,6 +150,85 @@ func newObjectMetaV2(nparts int, nversions int) ObjectMetaV2 {
 
 func getSampleObjectMetaV2(nparts int, nversions int) ObjectMetaV2 {
 	return newObjectMetaV2(nparts, nversions)
+}
+
+// GetJournalEntryN returns journal entry n.
+// z will be filled with the global information, but z.Journals will not be filled.
+// Specify version -1 to get the last version.
+// An optional destination can be supplied.
+func (z *ObjectMetaV2) GetJournalEntryN(bts []byte, n int, dst *ObjectMetaV2JournalEntry) (journal *ObjectMetaV2JournalEntry, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "v":
+			z.Version, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Version")
+				return
+			}
+		case "fmt":
+			{
+				var zb0002 int
+				zb0002, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Format")
+					return
+				}
+				z.Format = Format(zb0002)
+			}
+		case "journals":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectJournals")
+				return
+			}
+			if n < 0 {
+				// last entry
+				n = int(zb0003) - 1
+			}
+			if n > int(zb0003)-1 {
+				err = msgp.WrapError(errors.New("requested object index not found"), "ObjectJournals", zb0003)
+				return
+			}
+			if dst == nil {
+				dst = &ObjectMetaV2JournalEntry{}
+			}
+			for n >= 0 {
+				// Actually decoding is faster than skipping....
+				bts, err = dst.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectJournals")
+					return
+				}
+				if n == 0 {
+					journal = dst
+					return
+				}
+				n--
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
 }
 
 // DecodeMsg implements msgp.Decodable

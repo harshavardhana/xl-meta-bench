@@ -21,6 +21,7 @@ func benchmarkParseUnmarshalN(b *testing.B, ObjectMetaBuf []byte, parser string,
 		b.Log(parser, "Size:", humanize.IBytes(uint64(len(ObjectMetaBuf))))
 	}
 	b.RunParallel(func(pb *testing.PB) {
+		var journal *ObjectMetaV2JournalEntry
 		for pb.Next() {
 			var unMarshalObjectMeta ObjectMetaV2
 			switch parser {
@@ -61,6 +62,18 @@ func benchmarkParseUnmarshalN(b *testing.B, ObjectMetaBuf []byte, parser string,
 					b.Fatal(err)
 				}
 				if unMarshalObjectMeta.ObjectJournals[0].Object.DataErasureM != 8 {
+					b.Fatal("unexpected")
+				}
+				if len(unMarshalObjectMeta.ObjectJournals)*len(unMarshalObjectMeta.ObjectJournals[0].Object.DataPartInfoNumbers) != elems {
+					b.Fatalf("unexpected, len (%d * %d) != want (%d)", len(unMarshalObjectMeta.ObjectJournals), len(unMarshalObjectMeta.ObjectJournals[0].Object.DataPartInfoNumbers), elems)
+				}
+			case "msgpack-last":
+				var err error
+				journal, err = unMarshalObjectMeta.GetJournalEntryN(ObjectMetaBuf, -1, journal)
+				if err != nil {
+					b.Fatal(err)
+				}
+				if journal.Object.DataErasureM != 8 {
 					b.Fatal("unexpected")
 				}
 			}
@@ -159,6 +172,23 @@ func BenchmarkParseUnmarshalTinylibMsg(b *testing.B) {
 			test := fmt.Sprintf("%s-%dx%d", "msgpack-fast", m, n)
 			b.Run(test, func(b *testing.B) {
 				benchmarkParseUnmarshalN(b, ObjectMetaBuf, "msgpack-fast", n*m)
+			})
+		}
+	}
+}
+
+func BenchmarkParseUnmarshalLastTinylibMsg(b *testing.B) {
+	for _, m := range ms {
+		for _, n := range ns {
+			xlmeta := getSampleObjectMetaV2(m, n)
+			ObjectMetaBuf, err := xlmeta.MarshalMsg(nil)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			test := fmt.Sprintf("%s-%dx%d", "msgpack-last", m, n)
+			b.Run(test, func(b *testing.B) {
+				benchmarkParseUnmarshalN(b, ObjectMetaBuf, "msgpack-last", n*m)
 			})
 		}
 	}
