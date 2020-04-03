@@ -43,7 +43,6 @@ type MacAlgo uint8
 const (
 	MacAlgoNone MacAlgo = iota
 	MacAlgoHMACSHA256
-	MacAlgoSHAKE256
 )
 
 type ObjectMetaV2DeleteMarker struct {
@@ -67,8 +66,8 @@ type ObjectMetaV2Object struct {
 	DataErasureChecksumAlgo ChecksumAlgo        `json:"calgo" msg:"clago"`
 	DataPartInfoNumbers     DeltaEncodedInt     `json:"pnum" msg:"pnum"`
 	DataPartInfoSizes       DeltaEncodedInt     `json:"psz" msg:"psz"`
-	MacAlgo                 MacAlgo             `json:"malgo,omitempty" msg:"malgo,omitempty"`
-	MacIV                   []byte              `json:"mac" msg:"mac"`
+	MACAlgo                 MacAlgo             `json:"malgo,omitempty" msg:"malgo,omitempty"`
+	MAC                     []byte              `json:"mac,omitempty" msg:"mac,omitempty"`
 	StatSize                int                 `json:"size" msg:"size"`
 	StatModTime             int64               `json:"mtime" msg:"mtime"`
 	MetaSys                 map[string][]byte   `json:"msys" msg:"msys,omitempty"`
